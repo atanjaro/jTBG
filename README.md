@@ -11,4 +11,4 @@ Julia package for implementing a tight-binding model for monolayer and (twisted)
 
 ## Contact
 
-For questions and comments regarding this package, please email Andy Tanjaroon Ly at [atanjarot@vols.utk.edu](mailto:atanjaro@vols.utk.edu).
+For questions and comments regarding this package, please email Andy Tanjaroon Ly at [atanjaro@vols.utk.edu](mailto:atanjaro@vols.utk.edu).
