@@ -1,6 +1,6 @@
 # jTBG
 
-This package implements a tight-binding model for monolayer and (twisted) bilayer (coming soon) Graphene to compute phonon dispersions and electron-phono coupling (coming soon). 
+This package implements a tight-binding model for monolayer and (twisted) bilayer (coming soon) Graphene to compute phonon dispersions and electron-phonon coupling (coming soon). 
 
 ## External Dependencies
 
