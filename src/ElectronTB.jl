@@ -91,3 +91,131 @@ function calculate_electronic_band_structure(el_exp_sum, slater_koster)
     return energies, states
 end
 
+
+"""
+    generate_electronic_dofs(k_points1, k_points2, k_points3, slater_koster, δ_vectors, Nk, a, directory_path, k_name)
+
+Calculates the electronic band structure and writes quantities to file. Returns the energies
+and associated states.
+
+"""
+function generate_electronic_dofs(k_points1, k_points2, k_points3, slater_koster, δ_vectors, Nk, a, kq_flag, write)
+    if kq_flag == true
+        # pre-allocate sums of exponentials
+        exp_sums1 = []
+        exp_sums2 = []
+        exp_sums3 = []
+        # generate an array of k+q exponntial sums. For instance, the first entry of exp_sums corresponds to the sums assocaited with k + (0,0)
+        for i in 1:Nk
+            exp_sum1 = get_exponential_sums(δ_vectors, k_points1[i], Nk, a)  
+            exp_sum2 = get_exponential_sums(δ_vectors, k_points2[i], Nk, a)
+            exp_sum3 = get_exponential_sums(δ_vectors, k_points3[i], Nk, a)
+            push!(exp_sums1, exp_sum1)
+            push!(exp_sums2, exp_sum2)
+            push!(exp_sums3, exp_sum3)
+        end
+
+        all_energies1 = []
+        all_energies2 = []
+        all_energies3 = []
+        all_states1 = []
+        all_states2 = []
+        all_states3 = []
+        for i in 1:Nk
+            # get (k+q) band structure 
+            (energies1, states1) = calculate_electronic_band_structure(exp_sums1[i], slater_koster)
+            (energies2, states2) = calculate_electronic_band_structure(exp_sums2[i], slater_koster)
+            (energies3, states3) = calculate_electronic_band_structure(exp_sums3[i], slater_koster)
+            push!(all_energies1, energies1)
+            push!(all_energies2, energies2)
+            push!(all_energies3, energies3)
+            push!(all_states1, states1)
+            push!(all_states2, states2)
+            push!(all_states3, states3)
+        end
+
+        if write == true
+            # write energies to file
+            writedlm(directory_path*"electronic_kq_energies1.csv", all_energies1)
+            writedlm(directory_path*"electronic_kq_energies2.csv", all_energies2)
+            writedlm(directory_path*"electronic_kq_energies3.csv", all_energies3)
+
+            # write states to file
+            writedlm(directory_path*"electronic_kq_states1.csv", all_states1)
+            writedlm(directory_path*"electronic_kq_states2.csv", all_states2)
+            writedlm(directory_path*"electronic_kq_states3.csv", all_states3)
+        end
+
+        return all_energies1, all_energies2, all_energies3, all_states1, all_states2, all_states3
+
+    elseif kq_flag == false
+        # pre-allocate sums of exponentials  
+        exp_sum1 = get_exponential_sums(δ_vectors, k_points1, Nk, a)
+        exp_sum2 = get_exponential_sums(δ_vectors, k_points2, Nk, a)
+        exp_sum3 = get_exponential_sums(δ_vectors, k_points3, Nk, a)
+
+        # get band structure
+        (energies1, states1) = calculate_electronic_band_structure(exp_sum1, slater_koster)
+        (energies2, states2) = calculate_electronic_band_structure(exp_sum2, slater_koster)
+        (energies3, states3) = calculate_electronic_band_structure(exp_sum3, slater_koster)
+
+        # convert electronic energies to matrices 
+        energies1 = permutedims(hcat(energies1...))
+        energies2 = permutedims(hcat(energies2...))
+        energies3 = permutedims(hcat(energies3...))
+
+        if write == true
+            # write energies to file
+            writedlm(directory_path*"electronic_k_energies1.csv", energies1)
+            writedlm(directory_path*"electronic_k_energies2.csv", energies2)
+            writedlm(directory_path*"electronic_k_energies3.csv", energies3)
+
+            # write states to file
+            writedlm(directory_path*"electronic_k_states1.csv", states1)
+            writedlm(directory_path*"electronic_k_states2.csv", states2)
+            writedlm(directory_path*"electronic_k_states3.csv", states3)
+        end
+
+        return energies1, energies2, energies3, states1, states2, states3
+    end
+end
+
+
+"""
+    generate_electronic_dofs(slater_koster, δ_vectors, ΓM_points, Nk, a)
+
+Calculates the electronic band structure and writes quantities to file. Returns the energies
+and associated states.
+
+"""
+function generate_electronic_dofs(kq_points1, kq_points2, kq_points3, slater_koster, δ_vectors, Nk, a, directory_path, kq_name)
+
+
+    # get (k+q) band structure 
+    (energies1, kq_states1) = calculate_electronic_band_structure(kq_el_exp_sum1, slater_koster)
+    (kq_el_energies2, kq_states2) = calculate_electronic_band_structure(kq_el_exp_sum2, slater_koster)
+    (kq_el_energies3, kq_states3) = calculate_electronic_band_structure(kq_el_exp_sum3, slater_koster)
+
+    # convert (k+q) energies to matrices 
+    kq_el_energies1 = permutedims(hcat(kq_el_energies1...))
+    kq_el_energies2 = permutedims(hcat(kq_el_energies2...))
+    kq_el_energies3 = permutedims(hcat(kq_el_energies3...))
+
+    # write energies to file
+    writedlm(directory_path*k_name*"_electronic_energies1.csv", energies1)
+    writedlm(directory_path*k_name*"_electronic_energies2.csv", energies2)
+    writedlm(directory_path*k_name*"_electronic_energies3.csv", energies3)
+
+    # write states to file
+    writedlm(directory_path*k_name*"_electronic_states1.csv", states1)
+    writedlm(directory_path*k_name*"_electronic_states2.csv", states2)
+    writedlm(directory_path*k_name*"_electronic_states3.csv", states3)
+
+
+
+
+
+    return energies1, energies2, energies3, states1, states2, states3
+end
+
+

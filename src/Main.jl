@@ -5,7 +5,6 @@ using Plots
 using DelimitedFiles
 import Base.Filesystem.mkdir
 using SparseArrays 
-using FFTW  
 using GeometryBasics
 
 
@@ -124,9 +123,6 @@ function run()
     Tδ₃ = Tδ₁ - Ta₂
 
 
-   
-
-
     ###########################################
     ##           CALCULATE K-POINTS          ##
     ###########################################
@@ -146,68 +142,21 @@ function run()
     MK_points = [M + t * (K - M) for t in range(0, stop=1, length=Nk)]
     KΓ_points = [K + t * (Γ - K) for t in range(0, stop=1, length=Nk)]
 
-    # q-point of interest (for testing)
-    q = [0,0]
-
-    # Generate (k+q)-points along cuts of the FBZ
-    kq_points1 = get_kq_points(ΓM_points, q)
-    kq_points2 = get_kq_points(MK_points, q)
-    kq_points3 = get_kq_points(KΓ_points, q)
+    # # Generate (k+q)-points along cuts of the FBZ
+    kq_points1 = get_all_kq_points(ΓM_points, ΓM_points)    # 10 k-points x 10 q-points. e.g. the first entry kq_points[1] corresponds to all k-points + q = (0,0)
+    kq_points2 = get_all_kq_points(MK_points, MK_points)
+    kq_points3 = get_all_kq_points(KΓ_points, KΓ_points)
 
 
     ##########################################################################
     ##      CALCULATE QUANTITIES FOR ELECTRONIC DEGREES OF FREEDOM          ##
     ##########################################################################       
-    # pre-allocate sums of exponentials  
-    el_exp_sum1 = get_exponential_sums(δ_vectors, ΓM_points, Nk, a)
-    el_exp_sum2 = get_exponential_sums(δ_vectors, MK_points, Nk, a)
-    el_exp_sum3 = get_exponential_sums(δ_vectors, KΓ_points, Nk, a)
 
-    # get band structure
-    (el_energies1, states1) = calculate_electronic_band_structure(el_exp_sum1, slater_koster)
-    (el_energies2, states2) = calculate_electronic_band_structure(el_exp_sum2, slater_koster)
-    (el_energies3, states3) = calculate_electronic_band_structure(el_exp_sum3, slater_koster)
+    # generate k-dependent energies and states along all cuts of the FBZ
+    (energies1, energies2, energies3, states1, states2, states3) = generate_electronic_dofs(ΓM_points, MK_points, KΓ_points, slater_koster, δ_vectors, Nk, a, false, false)
 
-    # convert electronic energies to matrices 
-    el_energies1 = permutedims(hcat(el_energies1...))
-    el_energies2 = permutedims(hcat(el_energies2...))
-    el_energies3 = permutedims(hcat(el_energies3...))
-
-    # write energies to file
-    writedlm(directory_path*"gamma_M_energies.csv", el_energies1)
-    writedlm(directory_path*"M_K_energies.csv", el_energies2)
-    writedlm(directory_path*"K_gamma_energies.csv", el_energies3)
-
-    # write states to file
-    writedlm(directory_path*"gamma_M_states.csv", states1)
-    writedlm(directory_path*"M_K_states.csv", states2)
-    writedlm(directory_path*"K_gamma_states.csv", states3)
-
-    # electronic energies as a function of (k+q) for electron-phonon coupling
-    # preallocate (k+q) sums
-    kq_el_exp_sum1 = get_exponential_sums(δ_vectors, kq_points1, Nk, a)
-    kq_el_exp_sum2 = get_exponential_sums(δ_vectors, kq_points2, Nk, a)
-    kq_el_exp_sum3 = get_exponential_sums(δ_vectors, kq_points3, Nk, a)
-
-    # get (k+q) band structure 
-    (kq_el_energies1, kq_states1) = calculate_electronic_band_structure(kq_el_exp_sum1, slater_koster)
-    (kq_el_energies2, kq_states2) = calculate_electronic_band_structure(kq_el_exp_sum2, slater_koster)
-    (kq_el_energies3, kq_states3) = calculate_electronic_band_structure(kq_el_exp_sum3, slater_koster)
-
-    # convert (k+q) energies to matrices 
-    kq_el_energies1 = permutedims(hcat(kq_el_energies1...))
-    kq_el_energies2 = permutedims(hcat(kq_el_energies2...))
-    kq_el_energies3 = permutedims(hcat(kq_el_energies3...))
-
-    # write (k+q) energies to file
-    writedlm(directory_path*"kq1_energies.csv", kq_el_energies1)
-    writedlm(directory_path*"kq2_energies.csv", kq_el_energies2)
-    writedlm(directory_path*"kq3_energies.csv", kq_el_energies3)
-
-    # write states to file
-    writedlm(directory_path*"kq1_states.csv", kq_states1)
-    writedlm(directory_path*"kq2_states.csv", kq_states2)
-    writedlm(directory_path*"kq3_states.csv", kq_states3)
+    # generate kq-dependent energies and states along all cuts of the FBZ
+    (kq_energies1, kq_energies2, kq_energies3, kq_states1, kq_states2, kq_states3) = generate_electronic_dofs(kq_points1, kq_points2, kq_points3, slater_koster, δ_vectors, Nk, a, true, false)
 
 
     ########################################################################
@@ -259,23 +208,17 @@ function run()
     ##      CALCULATE QUANTITIES FOR ELECTRON-PHONON COUPLING          ##
     #####################################################################
 
-    # generate values of the screened Coulomb potential
-    potential_ΓM = coulomb_potential_TF(ΓM_points, q_TF, echarge, false)
-    potential_MK = coulomb_potential_TF(MK_points, q_TF, echarge, false)
-    potential_KΓ = coulomb_potential_TF(KΓ_points, q_TF, echarge, false)
+    # coupling to out-of-plane modes, (q = 0) for now
+    coupling1 = get_eph_coupling(ephc, ph_energies1, ΓM_points, q_TF, a₁, a₂, Nk)
+    coupling2 = get_eph_coupling(ephc, ph_energies1, MK_points, q_TF, a₁, a₂, Nk)
+    coupling3 = get_eph_coupling(ephc, ph_energies1, KΓ_points, q_TF, a₁, a₂, Nk)
 
-    # generate coupling matrix elements, assuming deformation coupling: ⟨k+q|V(q)exp(iq⋅r)|k⟩
-    matrix_elements_ΓM = get_eph_matrix_elements(states1, kq_states1,potential_ΓM,unit_cell) 
-    matrix_elements_MK = get_eph_matrix_elements(states2, kq_states2,potential_MK,unit_cell) 
-    matrix_elements_KΓ = get_eph_matrix_elements(states3, kq_states3,potential_KΓ,unit_cell) 
-    
-    # compute momentum dependent electron-phonon coupling, g(k,q)
-    # coupling to out-of-plane modes
-    g_ΓM_z = get_eph_coupling(matrix_elements_ΓM, ephc, ph_energies1, ΓM_points)
-    g_MK_z = get_eph_coupling(matrix_elements_MK, ephc, ph_energies2, MK_points)
-    g_KΓ_z = get_eph_coupling(matrix_elements_KΓ, ephc, ph_energies3, KΓ_points)
+    # collect all diagonal elements of the coupling
+    AA_elements = [matrix[1, 1] for matrix in coupling1[2]]
+    BB_elements = [matrix[2, 2] for matrix in coupling1[2]]
 
-    # coupling to in-plane modes
+    # Display the result
+    println(AA_elements)
 
 
 

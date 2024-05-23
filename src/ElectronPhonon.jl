@@ -36,12 +36,13 @@ end
 
 Computes the momentum-dependent electron-phonon coupling constant g(k,q) = i * sqrt(ħN/2MΩ(q,ν)) * ⟨k+q|exp(iq⋅r)V(q)|k⟩ * q⋅e(ν) .
 """
-function get_eph_coupling(eph_matrix_elements, ephc, ph_energies, q_points)
+function get_eph_coupling(k_el_states, kq_el_states, ephc, ph_energies, q_points, q_TF, a₁, a₂, Nk)
     # get number of bands/orbitals
     n_bands = unit_cell.n
 
     # get number of branches for the phonon mode
-    rows, n_branches = size(ph_energies1)
+    # energies need to be converted to matrices for this to work
+    rows, n_branches = size(ph_energies)
 
     # get all lattice position vectors
     r_vecs = get_positions(a₁, a₂, Nk)
@@ -66,26 +67,26 @@ function get_eph_coupling(eph_matrix_elements, ephc, ph_energies, q_points)
 
     
     # generate potential values for all q-points
-    for q_point in ΓM_points
+    for q_point in q_points
         potential = screened_coulomb_TF(q_point, q_TF, echarge)
         push!(Vqs,potential)
     end
 
     # get coupling matrix elements for all q-points and for all bands
     for band in 1:n_bands       
-        for (r_point,q_point,V) in zip(r_vecs, ΓM_points, Vqs)      # 10 q-points x 10 k-points
-            mat_el = get_eph_matrix_elements(states1, kq_states1, V, q_point, r_point, band)
+        for (r_point,q_point,V) in zip(r_vecs, q_points, Vqs)      # 10 q-points x 10 k-points
+            mat_el = get_eph_matrix_elements(k_el_states, kq_el_states, V, q_point, r_point, band)          # TODO: need to debug. Need to 
             push!(matrix_elements,mat_el)       # first Nk entries are for the 1st band, second Nk entries are for the 2nd band
         end
     end
 
     # calculate coupling of each band to each phonon branch
-    for (q_point, pf, me) in zip(ΓM_points, q_prefactors[1:10], matrix_elements)            # TODO: need to be more generic about the band number
+    for (q_point, pf, me) in zip(ΓM_points, q_prefactors[1:10], matrix_elements)            # TODO: need to be more generic about the band number, right now it's for the first band
         g = (pf * me * la.norm(q_point))im
         push!(g_kq, g)
     end
 
-    return g_kq
+    return g_kq         # for Nk q-points, [g_kq] = Nk, with Nk couplings to Nk k-points. Each of the Nk entries are coupling to each k-point i.e. the 1st entry if the coupling of q₁ to k₁,k₂,...,kₙ
 end
 
 

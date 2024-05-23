@@ -97,6 +97,24 @@ end
 
 
 """
+    get_all_kq_points( k_points::Vector{SVector{2, Float64}}, q_points::Vector{Float64} )
+
+Given a set of k-points along cuts in the FBZ and a valid q-point, computes all (k+q)-points, where q is the phonon momentum. 
+
+"""
+function get_all_kq_points(k_points, q_points)
+    all_kq_points = []
+    for q_point in q_points
+        points = get_kq_points(k_points, q_point)
+        push!(all_kq_points, points)
+    end
+
+    return all_kq_points        # creates an array of arrays of q points, where each sub-array corresponds to one particular q-points
+end
+
+
+
+"""
     get_positions(a₁, a₂, Nk)
 
 Obtains position vectors for a finite lattice given the number of k-points. 
