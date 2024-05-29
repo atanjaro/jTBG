@@ -25,10 +25,33 @@ end
 
 Rotates a vector by an angle specified in radians.
 """
-function rotate_vector(vector, θ)
-    # Convert vector to polar coordinates
-    magnitude = abs(vector)
-    current_angle = atan(imag(vector), real(vector))
+# function rotate_vector(vector, θ)
+#     # Convert vector to polar coordinates
+#     magnitude = la.norm(vector)
+#     current_angle = atan(imag(vector), real(vector))
+
+#     # Apply rotation to the angle component
+#     new_angle = current_angle + θ
+
+#     # Convert back to Cartesian coordinates
+#     rotated_vector = magnitude * exp(im * new_angle)
+
+#     return rotated_vector
+# end
+
+function rotate_vector(vector, θ::Float64)
+    if isa(vector, Complex)
+        # If vector is a complex number
+        magnitude = norm(vector)
+        current_angle = angle(vector)
+    elseif isa(vector, AbstractVector) && length(vector) == 2
+        # If vector is a 2D Cartesian coordinate
+        real_part, imag_part = vector
+        magnitude = la.norm(vector)
+        current_angle = atan(imag_part, real_part)
+    else
+        error("Unsupported vector format. Provide a complex number or a 2D Cartesian coordinate.")
+    end
 
     # Apply rotation to the angle component
     new_angle = current_angle + θ
@@ -38,6 +61,8 @@ function rotate_vector(vector, θ)
 
     return rotated_vector
 end
+
+
 
 """
     rotation_matrix( θ::Real )
@@ -51,34 +76,20 @@ function rotation_matrix(θ)
 end
 
 
-"""
-    in_parallelogram(p1, p2, p)
-
-Checks whether the point 'p' lies in the parallelogram formed by 'p₁' and 'p₂'
-"""
-function in_parallelogram(p₁, p₂, p)
-    v₁ = p₂ .- p₁
-    v₂ = p .- p₁
-    
-    # Calculate the cross product
-    cross_product = la.cross(v₁, v₂)
-    
-    # Check if the cross product is approximately zero
-    return la.norm(cross_product) < 1e-10
+# Function to check if point is in the parallelogram
+function region_member_parallelogram(origin, v1, v2, point)
+    relative_point = point .- origin
+    dot_v1_v1 = la.dot(v1, v1)
+    dot_v1_v2 = la.dot(v1, v2)
+    dot_v2_v2 = la.dot(v2, v2)
+    dot_rp_v1 = la.dot(relative_point, v1)
+    dot_rp_v2 = la.dot(relative_point, v2)
+    det = dot_v1_v1 * dot_v2_v2 - dot_v1_v2 * dot_v1_v2
+    alpha = (dot_v2_v2 * dot_rp_v1 - dot_v1_v2 * dot_rp_v2) / det
+    beta = (dot_v1_v1 * dot_rp_v2 - dot_v1_v2 * dot_rp_v1) / det
+    return 0 <= alpha <= 1 && 0 <= beta <= 1
 end
 
-function parallelogram_corner(a, b)
-    c = a + b
-    d = c + a
-    Polygon([a, b, c, d])
-end
-
-
-function region_member(G1, G2, rA, i, j)
-    parallelogram = parallelogram_corner((0, 0), (G1 * 0.9999999, G2 * 0.9999999))
-    rA_point = rA(i, j)
-    rA_point in parallelogram
-end
 
 """
     get_kq_points( k_points::Vector{SVector{2, Float64}}, q_point::Vector{Float64} )

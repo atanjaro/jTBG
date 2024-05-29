@@ -7,6 +7,7 @@ A type defining Slater-Koster tight binding parameters.
 
 - `εₚ`: Carbon on-site p-orbital energy.
 - `Vppπ`: hopping energy between Carbon p-orbital via π-bond.
+- `Vppσ`: hopping energy between Carbon p-orbital via σ-bond.
 """
 struct SlaterKoster
     # on-site p-orbital energy
@@ -14,6 +15,9 @@ struct SlaterKoster
 
     # p-p orbital π-bond hopping parameter
     Vppπ::Float64
+
+    # p-p orbital σ-bond hopping parameter
+    Vppσ::Float64
 end
 
 
@@ -95,7 +99,7 @@ end
 """
     generate_electronic_dofs(k_points1, k_points2, k_points3, slater_koster, δ_vectors, Nk, a, directory_path, k_name)
 
-Calculates the electronic band structure and writes quantities to file. Returns the energies
+Calculates the electronic band structure along 3 cuts of the FBZ and writes quantities to file. Returns the energies
 and associated states.
 
 """
@@ -107,6 +111,9 @@ function generate_electronic_dofs(k_points1, k_points2, k_points3, slater_koster
         exp_sums3 = []
         # generate an array of k+q exponntial sums. For instance, the first entry of exp_sums corresponds to the sums assocaited with k + (0,0)
         for i in 1:Nk
+            if verbose ==true
+                println("Generating exponential sums...")
+            end
             exp_sum1 = get_exponential_sums(δ_vectors, k_points1[i], Nk, a)  
             exp_sum2 = get_exponential_sums(δ_vectors, k_points2[i], Nk, a)
             exp_sum3 = get_exponential_sums(δ_vectors, k_points3[i], Nk, a)
@@ -122,6 +129,9 @@ function generate_electronic_dofs(k_points1, k_points2, k_points3, slater_koster
         all_states2 = []
         all_states3 = []
         for i in 1:Nk
+            if verbose ==true
+                println("Generating (k+q)-dpendendent band structure...")
+            end
             # get (k+q) band structure 
             (energies1, states1) = calculate_electronic_band_structure(exp_sums1[i], slater_koster)
             (energies2, states2) = calculate_electronic_band_structure(exp_sums2[i], slater_koster)
@@ -140,21 +150,41 @@ function generate_electronic_dofs(k_points1, k_points2, k_points3, slater_koster
             writedlm(directory_path*"electronic_kq_energies2.csv", all_energies2)
             writedlm(directory_path*"electronic_kq_energies3.csv", all_energies3)
 
+            if verbose ==true
+                println("Eigenenergies written to file at $directory_path")
+            end
+
             # write states to file
             writedlm(directory_path*"electronic_kq_states1.csv", all_states1)
             writedlm(directory_path*"electronic_kq_states2.csv", all_states2)
             writedlm(directory_path*"electronic_kq_states3.csv", all_states3)
+
+            if verbose ==true
+                println("Eigenstates written to file at $directory_path")
+            end
+        end
+
+        if verbose ==true
+            println("Band structure for $Nk points along Γ-M successfully generated.")
+            println("Band structure for $Nk points along M-K successfully generated.")
+            println("Band structure for $Nk points along K-Γ successfully generated.")
         end
 
         return all_energies1, all_energies2, all_energies3, all_states1, all_states2, all_states3
 
     elseif kq_flag == false
         # pre-allocate sums of exponentials  
+        if verbose ==true
+            println("Generating exponential sums...")
+        end
         exp_sum1 = get_exponential_sums(δ_vectors, k_points1, Nk, a)
         exp_sum2 = get_exponential_sums(δ_vectors, k_points2, Nk, a)
         exp_sum3 = get_exponential_sums(δ_vectors, k_points3, Nk, a)
 
         # get band structure
+        if verbose ==true
+            println("Generating k-dependent band structure...")
+        end
         (energies1, states1) = calculate_electronic_band_structure(exp_sum1, slater_koster)
         (energies2, states2) = calculate_electronic_band_structure(exp_sum2, slater_koster)
         (energies3, states3) = calculate_electronic_band_structure(exp_sum3, slater_koster)
@@ -170,52 +200,28 @@ function generate_electronic_dofs(k_points1, k_points2, k_points3, slater_koster
             writedlm(directory_path*"electronic_k_energies2.csv", energies2)
             writedlm(directory_path*"electronic_k_energies3.csv", energies3)
 
+            if verbose ==true
+                println("Eigenenergies written to file at $directory_path")
+            end
+
             # write states to file
             writedlm(directory_path*"electronic_k_states1.csv", states1)
             writedlm(directory_path*"electronic_k_states2.csv", states2)
             writedlm(directory_path*"electronic_k_states3.csv", states3)
+
+            if verbose ==true
+                println("Eigenstates written to file at $directory_path")
+            end
+        end
+
+        if verbose ==true
+            println("Band structure for $Nk points along Γ-M successfully generated.")
+            println("Band structure for $Nk points along M-K successfully generated.")
+            println("Band structure for $Nk points along K-Γ successfully generated.")
         end
 
         return energies1, energies2, energies3, states1, states2, states3
     end
-end
-
-
-"""
-    generate_electronic_dofs(slater_koster, δ_vectors, ΓM_points, Nk, a)
-
-Calculates the electronic band structure and writes quantities to file. Returns the energies
-and associated states.
-
-"""
-function generate_electronic_dofs(kq_points1, kq_points2, kq_points3, slater_koster, δ_vectors, Nk, a, directory_path, kq_name)
-
-
-    # get (k+q) band structure 
-    (energies1, kq_states1) = calculate_electronic_band_structure(kq_el_exp_sum1, slater_koster)
-    (kq_el_energies2, kq_states2) = calculate_electronic_band_structure(kq_el_exp_sum2, slater_koster)
-    (kq_el_energies3, kq_states3) = calculate_electronic_band_structure(kq_el_exp_sum3, slater_koster)
-
-    # convert (k+q) energies to matrices 
-    kq_el_energies1 = permutedims(hcat(kq_el_energies1...))
-    kq_el_energies2 = permutedims(hcat(kq_el_energies2...))
-    kq_el_energies3 = permutedims(hcat(kq_el_energies3...))
-
-    # write energies to file
-    writedlm(directory_path*k_name*"_electronic_energies1.csv", energies1)
-    writedlm(directory_path*k_name*"_electronic_energies2.csv", energies2)
-    writedlm(directory_path*k_name*"_electronic_energies3.csv", energies3)
-
-    # write states to file
-    writedlm(directory_path*k_name*"_electronic_states1.csv", states1)
-    writedlm(directory_path*k_name*"_electronic_states2.csv", states2)
-    writedlm(directory_path*k_name*"_electronic_states3.csv", states3)
-
-
-
-
-
-    return energies1, energies2, energies3, states1, states2, states3
 end
 
 
