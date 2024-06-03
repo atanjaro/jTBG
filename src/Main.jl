@@ -33,7 +33,7 @@ function run()
     ##          GENERAL PARAMETERS          ##
     ##########################################
     # number of k-points
-    Nk = 10;
+    Nk = 100;
 
     # lattice constant (in Å)
     a = 1.0;
@@ -156,7 +156,7 @@ function run()
     g2_kq_ΓM = []
     g2_kq_MK = []
     g2_kq_KΓ = []
-    for i in 1:Nk
+    for i in 1:Nk-1
         ΓM_elements = [abs2.(matrix[1, 1]) for matrix in coupling1[i]][1]
         push!(g2_kq_ΓM, ΓM_elements)
         MK_elements = [abs2.(matrix[1, 1]) for matrix in coupling2[i]][1]
@@ -165,7 +165,18 @@ function run()
         push!(g2_kq_KΓ, KΓ_elements)
     end
     
+    
+    # flatten k-points 
+    flat_k1 = permutedims(hcat(ΓM_points...))
+    flat_k2 = permutedims(hcat(MK_points...))
+    flat_k3 = permutedims(hcat(KΓ_points...))
+
+
     # plot |g|² as a function of q
+    # clear plot
+    plot!(flat_k1[:,1],g2_kq_ΓM,linecolor=:red, line=:solid,linewidth=1.5,)
+    plot!(flat_k2[:,2].+maximum(flat_k1),g2_kq_MK,linecolor=:red, line=:solid,linewidth=1.5,)
+    plot!(flat_k3[:,1].+(maximum(flat_k2[:,2].+maximum(flat_k1))),reverse(g2_kq_KΓ),linecolor=:red, line=:solid,linewidth=1.5,)
 
    
 
