@@ -37,6 +37,12 @@ end
 Computes the momentum-dependent electron-phonon coupling constant g(k,q) = i * sqrt(ħN/2MΩ(q,ν)) * ⟨k+q|exp(iq⋅r)V(q)|k⟩ * q⋅e(ν) .
 """
 function get_eph_coupling(k_el_states, kq_el_states, ephc, ph_energies, q_points, q_TF, a₁, a₂, Nk) 
+    # DEBUG
+    # q_points = ΓM_points
+    # k_el_states = states1
+    # kq_el_states = kq_states1
+    # ph_energies = Ω₁_zz
+
     # get number of bands/orbitals
     n_bands = unit_cell.n
 
@@ -74,7 +80,7 @@ function get_eph_coupling(k_el_states, kq_el_states, ephc, ph_energies, q_points
 
     # get coupling matrix elements for all q-points and for all bands
     for band in 1:n_bands      
-        for (r_point,q_point,V, kq_states) in zip(r_vecs, q_points, Vqs, kq_el_states)      # 10 q-points x 10 k-points
+        for (r_point,q_point,V, kq_states) in zip(r_vecs, q_points, Vqs, kq_el_states)      # Nk q-points x Nk k-points
             mat_el = get_eph_matrix_elements(k_el_states, kq_states, V, q_point, r_point, band)          
             push!(matrix_elements,mat_el)       # first Nk entries are for the 1st band, second Nk entries are for the 2nd band
         end
@@ -83,7 +89,19 @@ function get_eph_coupling(k_el_states, kq_el_states, ephc, ph_energies, q_points
     # calculate coupling of each band to each phonon branch
     # there are either 2 or 4 branches, so this works. Maybe we can try something more generic in the future...
     if n_branches == 2
+        # coupling of the first band to the first phonon branch
         for (q_point, pf, me) in zip(q_points, q_prefactors[1:Nk], matrix_elements[1:Nk])           
+            g = (pf * me * la.norm(q_point))im
+            push!(g_kq, g)
+        end
+
+        for (q_point, pf, me) in zip(q_points, q_prefactors[Nk+1:n_branches*Nk], matrix_elements[1:Nk])           
+            g = (pf * me * la.norm(q_point))im
+            push!(g_kq, g)
+        end
+
+        # coupling of the second band to the second phonon branch
+        for (q_point, pf, me) in zip(q_points, q_prefactors[1:Nk], matrix_elements[Nk+1:n_branches*Nk])            
             g = (pf * me * la.norm(q_point))im
             push!(g_kq, g)
         end
@@ -93,42 +111,44 @@ function get_eph_coupling(k_el_states, kq_el_states, ephc, ph_energies, q_points
             push!(g_kq, g)
         end
     elseif n_branches == 4
-        for (q_point, pf, me) in zip(q_points, q_prefactors[1:10], matrix_elements[1:10])           
+        # coupling of the first band to all 4 phonon branches
+        for (q_point, pf, me) in zip(q_points, q_prefactors[1:Nk], matrix_elements[1:Nk])           
             g = (pf * me * la.norm(q_point))im
             push!(g_kq, g)
         end
 
-        for (q_point, pf, me) in zip(q_points, q_prefactors[11:20], matrix_elements[1:10])            
+        for (q_point, pf, me) in zip(q_points, q_prefactors[Nk+1:2*Nk], matrix_elements[1:Nk])            
             g = (pf * me * la.norm(q_point))im
             push!(g_kq, g)
         end
 
-        for (q_point, pf, me) in zip(q_points, q_prefactors[21:30], matrix_elements[1:10])            
+        for (q_point, pf, me) in zip(q_points, q_prefactors[2*Nk+1:3*Nk], matrix_elements[1:Nk])            
             g = (pf * me * la.norm(q_point))im
             push!(g_kq, g)
         end
 
-        for (q_point, pf, me) in zip(q_points, q_prefactors[31:40], matrix_elements[1:10])            
+        for (q_point, pf, me) in zip(q_points, q_prefactors[3*Nk+1:4*Nk], matrix_elements[1:Nk])            
             g = (pf * me * la.norm(q_point))im
             push!(g_kq, g)
         end
 
-        for (q_point, pf, me) in zip(q_points, q_prefactors[1:10], matrix_elements[11:20])           
+        # coupling of the second band to all 4 phonon branches
+        for (q_point, pf, me) in zip(q_points, q_prefactors[1:Nk], matrix_elements[Nk+1:2*Nk])           
             g = (pf * me * la.norm(q_point))im
             push!(g_kq, g)
         end
 
-        for (q_point, pf, me) in zip(q_points, q_prefactors[11:20], matrix_elements[11:20])            
+        for (q_point, pf, me) in zip(q_points, q_prefactors[Nk+1:2*Nk], matrix_elements[Nk+1:2*Nk])            
             g = (pf * me * la.norm(q_point))im
             push!(g_kq, g)
         end
 
-        for (q_point, pf, me) in zip(q_points, q_prefactors[21:30], matrix_elements[11:20])            
+        for (q_point, pf, me) in zip(q_points, q_prefactors[2*Nk+1:3*Nk], matrix_elements[Nk+1:2*Nk])            
             g = (pf * me * la.norm(q_point))im
             push!(g_kq, g)
         end
 
-        for (q_point, pf, me) in zip(q_points, q_prefactors[31:40], matrix_elements[11:20])            
+        for (q_point, pf, me) in zip(q_points, q_prefactors[3*Nk+1:4*Nk], matrix_elements[Nk+1:2*Nk])            
             g = (pf * me * la.norm(q_point))im
             push!(g_kq, g)
         end

@@ -141,28 +141,40 @@ function run()
     ##          ELECTRON-PHONON COUPLING          ##
     ################################################
 
-    # coupling to out-of-plane modes
+    # coupling to out-of-plane modes (will generate n_bands × n_branches × Nk = 2 × 2 × Nk  elements)
     coupling1 = get_eph_coupling(states1, kq_states1, ephc, Ω₁_zz, ΓM_points, q_TF, a₁, a₂, Nk);
     coupling2 = get_eph_coupling(states2, kq_states2, ephc, Ω₂_zz, MK_points, q_TF, a₁, a₂, Nk);
     coupling3 = get_eph_coupling(states3, kq_states3, ephc, Ω₃_zz, KΓ_points, q_TF, a₁, a₂, Nk);
 
-    # coupling to in-plane modes
+    # coupling to in-plane modes (will generate n_bands × n_branches × Nk = 2 × 4 × Nk elements)
     coupling4 = get_eph_coupling(states1, kq_states1, ephc, Ω₁_xy, ΓM_points, q_TF, a₁, a₂, Nk);
     coupling5 = get_eph_coupling(states2, kq_states2, ephc, Ω₂_xy, MK_points, q_TF, a₁, a₂, Nk);
     coupling6 = get_eph_coupling(states3, kq_states3, ephc, Ω₃_xy, KΓ_points, q_TF, a₁, a₂, Nk);
 
 
-    # collect all elements of the coupling as a function of q
-    g2_kq_ΓM = []
-    g2_kq_MK = []
-    g2_kq_KΓ = []
-    for i in 1:Nk-1
+    # collect all elements of the |g(k,q)|²
+    g₁2_kq_ΓM = []
+    g₂2_kq_MK = []
+    g₃2_kq_KΓ = []
+    for i in 1:Nk
         ΓM_elements = [abs2.(matrix[1, 1]) for matrix in coupling1[i]][1]
-        push!(g2_kq_ΓM, ΓM_elements)
+        push!(g₁2_kq_ΓM, ΓM_elements)
         MK_elements = [abs2.(matrix[1, 1]) for matrix in coupling2[i]][1]
-        push!(g2_kq_MK, MK_elements)
+        push!(g₂2_kq_MK, MK_elements)
         KΓ_elements = [abs2.(matrix[1, 1]) for matrix in coupling3[i]][1]
-        push!(g2_kq_KΓ, KΓ_elements)
+        push!(g₃2_kq_KΓ, KΓ_elements)
+    end
+
+    g₄2_kq_ΓM = []
+    g₅2_kq_MK = []
+    g₆2_kq_KΓ = []
+    for i in 1:Nk
+        ΓM_elements = [abs2.(matrix[1, 1]) for matrix in coupling4[i]][1]
+        push!(g₄2_kq_ΓM, ΓM_elements)
+        MK_elements = [abs2.(matrix[1, 1]) for matrix in coupling5[i]][1]
+        push!(g₅2_kq_MK, MK_elements)
+        KΓ_elements = [abs2.(matrix[1, 1]) for matrix in coupling6[i]][1]
+        push!(g₆2_kq_KΓ, KΓ_elements)
     end
     
     
@@ -172,11 +184,15 @@ function run()
     flat_k3 = permutedims(hcat(KΓ_points...))
 
 
-    # plot |g|² as a function of q
+    # plot |g(k,q)|² as a function of q
     # clear plot
-    plot!(flat_k1[:,1],g2_kq_ΓM,linecolor=:red, line=:solid,linewidth=1.5,)
-    plot!(flat_k2[:,2].+maximum(flat_k1),g2_kq_MK,linecolor=:red, line=:solid,linewidth=1.5,)
-    plot!(flat_k3[:,1].+(maximum(flat_k2[:,2].+maximum(flat_k1))),reverse(g2_kq_KΓ),linecolor=:red, line=:solid,linewidth=1.5,)
+    plot!(flat_k1[:,1],g₁2_kq_ΓM,linecolor=:red, line=:solid,linewidth=1.5,)
+    plot!(flat_k2[:,2].+maximum(flat_k1),g₂2_kq_MK,linecolor=:red, line=:solid,linewidth=1.5,)
+    plot!(flat_k3[:,1].+(maximum(flat_k2[:,2].+maximum(flat_k1))),reverse(g₃2_kq_KΓ),linecolor=:red, line=:solid,linewidth=1.5,)
+
+    plot!(flat_k1[:,1],g₁2_kq_ΓM,linecolor=:red, line=:solid,linewidth=1.5,)
+    plot!(flat_k2[:,2].+maximum(flat_k1),g₂2_kq_MK,linecolor=:red, line=:solid,linewidth=1.5,)
+    plot!(flat_k3[:,1].+(maximum(flat_k2[:,2].+maximum(flat_k1))),reverse(g₃2_kq_KΓ),linecolor=:red, line=:solid,linewidth=1.5,)
 
    
 
